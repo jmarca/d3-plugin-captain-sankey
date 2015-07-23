@@ -129,18 +129,17 @@ d3.sankey = function() {
       remainingNodes.forEach(function(node) {
         if (node.x === undefined) {
           node.x = x;
-          node.dx = nodeWidth;
-          node.sourceLinks.forEach(function(link) {
-            if (nextNodes.indexOf(link.target) < 0) {
-              nextNodes.push(link.target);
-            }
-          });
         }
+        node.dx = nodeWidth;
+        node.sourceLinks.forEach(function(link) {
+          if (nextNodes.indexOf(link.target) < 0) {
+            nextNodes.push(link.target);
+          }
+        });
       });
       remainingNodes = nextNodes;
       ++x;
     }
-
     // Optionally move pure sinks always to the right.
     if (sinksRight) {
       moveSinksRight(x);
