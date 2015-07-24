@@ -109,6 +109,8 @@ d3.sankey = function() {
         d3.sum(node.sourceLinks, value),
         d3.sum(node.targetLinks, value)
       );
+      //set minimum size
+      node.value = node.value < 0.5 ? 0.5 : node.value;
     });
   }
 
@@ -127,9 +129,7 @@ d3.sankey = function() {
     while (remainingNodes.length && x < nodes.length) {
       nextNodes = [];
       remainingNodes.forEach(function(node) {
-        if (node.x === undefined) {
-          node.x = x;
-        }
+        node.x = node.customX || x;
         node.dx = nodeWidth;
         node.sourceLinks.forEach(function(link) {
           if (nextNodes.indexOf(link.target) < 0) {
@@ -145,7 +145,7 @@ d3.sankey = function() {
       moveSinksRight(x);
     }
 
-    scaleNodeBreadths((size[0] - nodeWidth) / (x - 1));
+    scaleNodeBreadths((size[0] - sankey.nodeWidth()) / ((x <= 1 ? 2 : x) - 1));
   }
 
   function moveSourcesRight() {
