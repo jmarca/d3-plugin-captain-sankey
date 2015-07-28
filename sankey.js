@@ -104,12 +104,21 @@ d3.sankey = function() {
 
   // Compute the value (size) of each node by summing the associated links.
   function computeNodeValues() {
+    var min = 999999999999999999999999999;
     nodes.forEach(function(node) {
       node.value = Math.max(
         d3.sum(node.sourceLinks, value),
         d3.sum(node.targetLinks, value)
       );
+      if (node.value !== 0 && node.value < min) {
+        min = node.value;
+      }
     });
+    nodes.forEach(function(node){
+      if (node.value === 0)
+        node.value = min / 4;
+    });
+
   }
 
   // Iteratively assign the breadth (x-position) for each node.
