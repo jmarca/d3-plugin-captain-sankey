@@ -109,8 +109,6 @@ d3.sankey = function() {
         d3.sum(node.sourceLinks, value),
         d3.sum(node.targetLinks, value)
       );
-      //set minimum size
-      node.value = node.value < 0.5 ? 0.5 : node.value;
     });
   }
 
