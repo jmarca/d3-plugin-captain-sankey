@@ -5,7 +5,8 @@ d3.sankey = function() {
       size = [1, 1],
       nodes = [],
       links = [],
-      sinksRight = true;
+      sinksRight = true
+      minMultiplier = 0.5;
 
   sankey.nodeWidth = function(_) {
     if (!arguments.length) return nodeWidth;
@@ -41,6 +42,12 @@ d3.sankey = function() {
     if (!arguments.length) return sinksRight;
     sinksRight = _;
     return sankey;
+ };
+
+ sankey.minMultiplier = function (_) {
+  if (!arguments.length) return minMultiplier;
+  minMultiplier = _;
+  return sankey;
  };
 
   sankey.layout = function(iterations) {
@@ -116,7 +123,7 @@ d3.sankey = function() {
     });
     nodes.forEach(function(node){
       if (node.value === 0)
-        node.value = min / 4;
+        node.value = min * minMultiplier;
     });
 
   }
