@@ -6,7 +6,7 @@ d3.sankey = function() {
       nodes = [],
       links = [],
       sinksRight = true
-      minMultiplier = 0.5;
+      minimumNodeHeight = 0;
 
   sankey.nodeWidth = function(_) {
     if (!arguments.length) return nodeWidth;
@@ -44,9 +44,9 @@ d3.sankey = function() {
     return sankey;
  };
 
- sankey.minMultiplier = function (_) {
-  if (!arguments.length) return minMultiplier;
-  minMultiplier = _;
+ sankey.minimumNodeHeight = function (_) {
+  if (!arguments.length) return minimumNodeHeight;
+  minimumNodeHeight = _;
   return sankey;
  };
 
@@ -111,21 +111,12 @@ d3.sankey = function() {
 
   // Compute the value (size) of each node by summing the associated links.
   function computeNodeValues() {
-    var min = 999999999999999999999999999;
     nodes.forEach(function(node) {
       node.value = Math.max(
         d3.sum(node.sourceLinks, value),
         d3.sum(node.targetLinks, value)
       );
-      if (node.value !== 0 && node.value < min) {
-        min = node.value;
-      }
     });
-    nodes.forEach(function(node){
-      if (node.value === 0)
-        node.value = min * minMultiplier;
-    });
-
   }
 
   // Iteratively assign the breadth (x-position) for each node.
@@ -207,15 +198,25 @@ d3.sankey = function() {
     }
 
     function initializeNodeDepth() {
+      // Calculate missing space due to empty nodes
+      var emptyNodes = d3.sum(nodes, function(node) {
+        if (node.value === 0) {
+          return 1;
+        } else {
+          return 0;
+        }
+      });
+      var emptyPadding = emptyNodes && ((emptyNodes) * minimumNodeHeight) + ((emptyNodes - 1) * nodePadding);
+
       // Calculate vertical scaling factor.
       var ky = d3.min(nodesByBreadth, function(nodes) {
-        return (size[1] - (nodes.length - 1) * nodePadding) / d3.sum(nodes, value);
+        return (size[1] - (nodes.length - 1) * nodePadding - emptyPadding) / d3.sum(nodes, value);
       });
 
       nodesByBreadth.forEach(function(nodes) {
         nodes.forEach(function(node, i) {
           node.y = i;
-          node.dy = node.value * ky;
+          node.dy = (node.value * ky) || minimumNodeHeight;
         });
       });
 
