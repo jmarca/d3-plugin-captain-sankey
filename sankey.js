@@ -8,39 +8,40 @@ d3.sankey = function() {
       links = [],
       sinksRight = true;
 
-  sankey.nodeWidth = function(_) {
-    if (!arguments.length) return nodeWidth;
-    nodeWidth = +_;
+  // Accessor-land:
+  sankey.nodeWidth = function(x) {
+    if (x === undefined) { return nodeWidth; }
+    nodeWidth = +x;
     return sankey;
   };
 
-  sankey.nodePadding = function(_) {
-    if (!arguments.length) return nodePadding;
-    nodePadding = +_;
+  sankey.nodePadding = function(x) {
+    if (x === undefined) { return nodePadding; }
+    nodePadding = +x;
     return sankey;
   };
 
-  sankey.nodes = function(_) {
-    if (!arguments.length) return nodes;
-    nodes = _;
+  sankey.nodes = function(x) {
+    if (x === undefined) { return nodes; }
+    nodes = x;
     return sankey;
   };
 
-  sankey.links = function(_) {
-    if (!arguments.length) return links;
-    links = _;
+  sankey.links = function(x) {
+    if (x === undefined) { return links; }
+    links = x;
     return sankey;
   };
 
-  sankey.size = function(_) {
-    if (!arguments.length) return size;
-    size = _;
+  sankey.size = function(x) {
+    if (x === undefined) { return size; }
+    size = x;
     return sankey;
   };
 
- sankey.sinksRight = function (_) {
-    if (!arguments.length) return sinksRight;
-    sinksRight = _;
+ sankey.sinksRight = function (x) {
+    if (x === undefined) { return sinksRight; }
+    sinksRight = x;
     return sankey;
  };
 
@@ -80,9 +81,9 @@ d3.sankey = function() {
            + " " + x1 + "," + y1;
     }
 
-    link.curvature = function(_) {
-      if (!arguments.length) return curvature;
-      curvature = +_;
+    link.curvature = function(x) {
+      if (x === undefined) { return curvature; }
+      curvature = +x;
       return link;
     };
 
@@ -101,8 +102,8 @@ d3.sankey = function() {
     links.forEach(function(link) {
       var source = link.source,
           target = link.target;
-      if (typeof source === "number") source = link.source = nodes[link.source];
-      if (typeof target === "number") target = link.target = nodes[link.target];
+      if (typeof source === "number") { source = link.source = nodes[link.source]; }
+      if (typeof target === "number") { target = link.target = nodes[link.target]; }
       source.sourceLinks.push(link);
       target.targetLinks.push(link);
     });
@@ -259,7 +260,7 @@ d3.sankey = function() {
         for (i = 0; i < n; ++i) {
           node = nodes[i];
           dy = y0 - node.y;
-          if (dy > 0) node.y += dy;
+          if (dy > 0) { node.y += dy; }
           y0 = node.y + node.dy + nodePadding;
         }
 
@@ -272,7 +273,7 @@ d3.sankey = function() {
           for (i = n - 2; i >= 0; --i) {
             node = nodes[i];
             dy = node.y + node.dy + nodePadding - y0;
-            if (dy > 0) node.y -= dy;
+            if (dy > 0) { node.y -= dy; }
             y0 = node.y;
           }
         }
