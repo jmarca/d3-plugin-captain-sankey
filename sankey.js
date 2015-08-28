@@ -1,4 +1,5 @@
 d3.sankey = function() {
+ "use strict";
   var sankey = {},
       nodeWidth = 24,
       nodePadding = 8,
@@ -43,6 +44,11 @@ d3.sankey = function() {
     return sankey;
  };
 
+  // valueSum: Add up all the 'value' keys from a list of objects (happens a lot):
+  function valueSum(nodelist) {
+    return d3.sum(nodelist, function(d) { return d.value; });
+  }
+
   sankey.layout = function(iterations) {
     computeNodeLinks();
     computeNodeValues();
@@ -58,7 +64,7 @@ d3.sankey = function() {
 
   // SVG path data generator, to be used as "d" attribute on "path" element selection.
   sankey.link = function() {
-    var curvature = .5;
+    var curvature = 0.5;
 
     function link(d) {
       var x0 = d.source.x + d.source.dx,
@@ -104,11 +110,9 @@ d3.sankey = function() {
 
   // Compute the value (size) of each node by summing the associated links.
   function computeNodeValues() {
+    // Each node will equal the greater of the flows coming in or out:
     nodes.forEach(function(node) {
-      node.value = Math.max(
-        d3.sum(node.sourceLinks, value),
-        d3.sum(node.targetLinks, value)
-      );
+      node.value = Math.max( valueSum(node.sourceLinks), valueSum(node.targetLinks) );
     });
   }
 
@@ -181,10 +185,12 @@ d3.sankey = function() {
     initializeNodeDepth();
     resolveCollisions();
     computeLinkDepths();
+
     for (var alpha = 1; iterations > 0; --iterations) {
-      relaxRightToLeft(alpha *= .99);
+      relaxRightToLeft(alpha *= 0.99);
       resolveCollisions();
       computeLinkDepths();
+
       relaxLeftToRight(alpha);
       resolveCollisions();
       computeLinkDepths();
@@ -193,7 +199,7 @@ d3.sankey = function() {
     function initializeNodeDepth() {
       // Calculate vertical scaling factor.
       var ky = d3.min(nodesByBreadth, function(nodes) {
-        return (size[1] - (nodes.length - 1) * nodePadding) / d3.sum(nodes, value);
+        return (size[1] - (nodes.length - 1) * nodePadding) / valueSum(nodes);
       });
 
       nodesByBreadth.forEach(function(nodes) {
@@ -213,7 +219,7 @@ d3.sankey = function() {
         nodes.forEach(function(node) {
           if (node.targetLinks.length) {
             // Value-weighted average of the y-position of source node centers linked to this node.
-            var y = d3.sum(node.targetLinks, weightedSource) / d3.sum(node.targetLinks, value);
+            var y = d3.sum(node.targetLinks, weightedSource) / valueSum(node.targetLinks);
             node.y += (y - center(node)) * alpha;
           }
         });
@@ -229,7 +235,7 @@ d3.sankey = function() {
         nodes.forEach(function(node) {
           if (node.sourceLinks.length) {
             // Value-weighted average of the y-positions of target nodes linked to this node.
-            var y = d3.sum(node.sourceLinks, weightedTarget) / d3.sum(node.sourceLinks, value);
+            var y = d3.sum(node.sourceLinks, weightedTarget) / valueSum(node.sourceLinks);
             node.y += (y - center(node)) * alpha;
           }
         });
@@ -309,11 +315,6 @@ d3.sankey = function() {
   // Y-position of the middle of a node.
   function center(node) {
     return node.y + node.dy / 2;
-  }
-
-  // Value property accessor.
-  function value(x) {
-    return x.value;
   }
 
   return sankey;
