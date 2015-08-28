@@ -6,9 +6,16 @@ d3.sankey = function() {
       size = [1, 1],
       nodes = [],
       links = [],
-      sinksRight = true;
+      sinksRight = true,
+      curvature = 0.5;
 
   // Accessor-land:
+  sankey.curvature = function(x) {
+    if (x === undefined) { return curvature; }
+    curvature = +x;
+    return sankey;
+  };
+
   sankey.nodeWidth = function(x) {
     if (x === undefined) { return nodeWidth; }
     nodeWidth = +x;
@@ -281,12 +288,11 @@ d3.sankey = function() {
 
   // SVG path data generator, to be used as "d" attribute on "path" element selection.
   sankey.link = function() {
-    var curvature = 0.5;
-
     function link(d) {
       var x0 = d.source.x + d.source.dx,
           x1 = d.target.x,
           xi = d3.interpolateNumber(x0, x1),
+          // pick two points given the curvature and its converse:
           x2 = xi(curvature),
           x3 = xi(1 - curvature),
           y0 = d.source.y + d.sy + d.dy / 2,
@@ -296,12 +302,6 @@ d3.sankey = function() {
            + " " + x3 + "," + y1
            + " " + x1 + "," + y1;
     }
-
-    link.curvature = function(x) {
-      if (x === undefined) { return curvature; }
-      curvature = +x;
-      return link;
-    };
 
     return link;
   };
