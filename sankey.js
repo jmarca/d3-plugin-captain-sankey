@@ -50,45 +50,8 @@ d3.sankey = function() {
     return d3.sum(nodelist, function(d) { return d.value; });
   }
 
-  sankey.layout = function(iterations) {
-    computeNodeLinks();
-    computeNodeValues();
-    computeNodeBreadths();
-    computeNodeDepths(iterations);
-    return sankey;
-  };
-
-  sankey.relayout = function() {
-    computeLinkDepths();
-    return sankey;
-  };
-
-  // SVG path data generator, to be used as "d" attribute on "path" element selection.
-  sankey.link = function() {
-    var curvature = 0.5;
-
-    function link(d) {
-      var x0 = d.source.x + d.source.dx,
-          x1 = d.target.x,
-          xi = d3.interpolateNumber(x0, x1),
-          x2 = xi(curvature),
-          x3 = xi(1 - curvature),
-          y0 = d.source.y + d.sy + d.dy / 2,
-          y1 = d.target.y + d.ty + d.dy / 2;
-      return "M" + x0 + "," + y0
-           + "C" + x2 + "," + y0
-           + " " + x3 + "," + y1
-           + " " + x1 + "," + y1;
-    }
-
-    link.curvature = function(x) {
-      if (x === undefined) { return curvature; }
-      curvature = +x;
-      return link;
-    };
-
-    return link;
-  };
+  // center: Y-position of the middle of a node.
+  function center(node) { return node.y + node.dy / 2; }
 
   // Populate the sourceLinks and targetLinks for each node.
   // Also, if the source and target are not objects, assume they are indices.
@@ -114,6 +77,51 @@ d3.sankey = function() {
     // Each node will equal the greater of the flows coming in or out:
     nodes.forEach(function(node) {
       node.value = Math.max( valueSum(node.sourceLinks), valueSum(node.targetLinks) );
+    });
+  }
+
+  function moveSourcesRight() {
+    nodes.forEach(function(node) {
+      if (!node.targetLinks.length) {
+        node.x = d3.min(node.sourceLinks, function(d) { return d.target.x; }) - 1;
+      }
+    });
+  }
+
+  function moveSinksRight(x) {
+    nodes.forEach(function(node) {
+      if (!node.sourceLinks.length) {
+        node.x = x - 1;
+      }
+    });
+  }
+
+  function scaleNodeBreadths(kx) {
+    nodes.forEach(function(node) {
+      node.x *= kx;
+    });
+  }
+
+  // Compute y-offset of the source endpoint (sy) and target endpoints (ty) of links,
+  // relative to the source/target node's y-position.
+  function computeLinkDepths() {
+    function ascendingSourceDepth(a, b) { return a.source.y - b.source.y; }
+    function ascendingTargetDepth(a, b) { return a.target.y - b.target.y; }
+
+    nodes.forEach(function(node) {
+      node.sourceLinks.sort(ascendingTargetDepth);
+      node.targetLinks.sort(ascendingSourceDepth);
+    });
+    nodes.forEach(function(node) {
+      var sy = 0, ty = 0;
+      node.sourceLinks.forEach(function(link) {
+        link.sy = sy;
+        sy += link.dy;
+      });
+      node.targetLinks.forEach(function(link) {
+        link.ty = ty;
+        ty += link.dy;
+      });
     });
   }
 
@@ -151,28 +159,6 @@ d3.sankey = function() {
     scaleNodeBreadths((size[0] - nodeWidth) / (x - 1));
   }
 
-  function moveSourcesRight() {
-    nodes.forEach(function(node) {
-      if (!node.targetLinks.length) {
-        node.x = d3.min(node.sourceLinks, function(d) { return d.target.x; }) - 1;
-      }
-    });
-  }
-
-  function moveSinksRight(x) {
-    nodes.forEach(function(node) {
-      if (!node.sourceLinks.length) {
-        node.x = x - 1;
-      }
-    });
-  }
-
-  function scaleNodeBreadths(kx) {
-    nodes.forEach(function(node) {
-      node.x *= kx;
-    });
-  }
-
   // Compute the depth (y-position) for each node.
   function computeNodeDepths(iterations) {
     // Group nodes by breath.
@@ -181,21 +167,6 @@ d3.sankey = function() {
         .sortKeys(d3.ascending)
         .entries(nodes)
         .map(function(d) { return d.values; });
-
-    //
-    initializeNodeDepth();
-    resolveCollisions();
-    computeLinkDepths();
-
-    for (var alpha = 1; iterations > 0; --iterations) {
-      relaxRightToLeft(alpha *= 0.99);
-      resolveCollisions();
-      computeLinkDepths();
-
-      relaxLeftToRight(alpha);
-      resolveCollisions();
-      computeLinkDepths();
-    }
 
     function initializeNodeDepth() {
       // Calculate vertical scaling factor.
@@ -215,38 +186,6 @@ d3.sankey = function() {
       });
     }
 
-    function relaxLeftToRight(alpha) {
-      nodesByBreadth.forEach(function(nodes, breadth) {
-        nodes.forEach(function(node) {
-          if (node.targetLinks.length) {
-            // Value-weighted average of the y-position of source node centers linked to this node.
-            var y = d3.sum(node.targetLinks, weightedSource) / valueSum(node.targetLinks);
-            node.y += (y - center(node)) * alpha;
-          }
-        });
-      });
-
-      function weightedSource(link) {
-        return (link.source.y + link.sy + link.dy / 2) * link.value;
-      }
-    }
-
-    function relaxRightToLeft(alpha) {
-      nodesByBreadth.slice().reverse().forEach(function(nodes) {
-        nodes.forEach(function(node) {
-          if (node.sourceLinks.length) {
-            // Value-weighted average of the y-positions of target nodes linked to this node.
-            var y = d3.sum(node.sourceLinks, weightedTarget) / valueSum(node.sourceLinks);
-            node.y += (y - center(node)) * alpha;
-          }
-        });
-      });
-
-      function weightedTarget(link) {
-        return (link.target.y + link.ty + link.dy / 2) * link.value;
-      }
-    }
-
     function resolveCollisions() {
       nodesByBreadth.forEach(function(nodes) {
         var node,
@@ -254,6 +193,8 @@ d3.sankey = function() {
             y0 = 0,
             n = nodes.length,
             i;
+
+        function ascendingDepth(a, b) { return a.y - b.y; }
 
         // Push any overlapping nodes down.
         nodes.sort(ascendingDepth);
@@ -280,43 +221,93 @@ d3.sankey = function() {
       });
     }
 
-    function ascendingDepth(a, b) {
-      return a.y - b.y;
-    }
-  }
+    function relaxLeftToRight(alpha) {
+      function weightedSource(link) {
+        return (link.source.y + link.sy + link.dy / 2) * link.value;
+      }
 
-  // Compute y-offset of the source endpoint (sy) and target endpoints (ty) of links,
-  // relative to the source/target node's y-position.
-  function computeLinkDepths() {
-    nodes.forEach(function(node) {
-      node.sourceLinks.sort(ascendingTargetDepth);
-      node.targetLinks.sort(ascendingSourceDepth);
-    });
-    nodes.forEach(function(node) {
-      var sy = 0, ty = 0;
-      node.sourceLinks.forEach(function(link) {
-        link.sy = sy;
-        sy += link.dy;
+      nodesByBreadth.forEach(function(nodes, breadth) {
+        nodes.forEach(function(node) {
+          if (node.targetLinks.length) {
+            // Value-weighted average of the y-position of source node centers linked to this node.
+            var y = d3.sum(node.targetLinks, weightedSource) / valueSum(node.targetLinks);
+            node.y += (y - center(node)) * alpha;
+          }
+        });
       });
-      node.targetLinks.forEach(function(link) {
-        link.ty = ty;
-        ty += link.dy;
+    }
+
+    function relaxRightToLeft(alpha) {
+      function weightedTarget(link) {
+        return (link.target.y + link.ty + link.dy / 2) * link.value;
+      }
+
+      nodesByBreadth.slice().reverse().forEach(function(nodes) {
+        nodes.forEach(function(node) {
+          if (node.sourceLinks.length) {
+            // Value-weighted average of the y-positions of target nodes linked to this node.
+            var y = d3.sum(node.sourceLinks, weightedTarget) / valueSum(node.sourceLinks);
+            node.y += (y - center(node)) * alpha;
+          }
+        });
       });
-    });
-
-    function ascendingSourceDepth(a, b) {
-      return a.source.y - b.source.y;
     }
 
-    function ascendingTargetDepth(a, b) {
-      return a.target.y - b.target.y;
+    //
+    initializeNodeDepth();
+    resolveCollisions();
+    computeLinkDepths();
+
+    for (var alpha = 1; iterations > 0; --iterations) {
+      relaxRightToLeft(alpha *= 0.99);
+      resolveCollisions();
+      computeLinkDepths();
+
+      relaxLeftToRight(alpha);
+      resolveCollisions();
+      computeLinkDepths();
     }
   }
 
-  // Y-position of the middle of a node.
-  function center(node) {
-    return node.y + node.dy / 2;
-  }
+  // SVG path data generator, to be used as "d" attribute on "path" element selection.
+  sankey.link = function() {
+    var curvature = 0.5;
+
+    function link(d) {
+      var x0 = d.source.x + d.source.dx,
+          x1 = d.target.x,
+          xi = d3.interpolateNumber(x0, x1),
+          x2 = xi(curvature),
+          x3 = xi(1 - curvature),
+          y0 = d.source.y + d.sy + d.dy / 2,
+          y1 = d.target.y + d.ty + d.dy / 2;
+      return "M" + x0 + "," + y0
+           + "C" + x2 + "," + y0
+           + " " + x3 + "," + y1
+           + " " + x1 + "," + y1;
+    }
+
+    link.curvature = function(x) {
+      if (x === undefined) { return curvature; }
+      curvature = +x;
+      return link;
+    };
+
+    return link;
+  };
+
+  sankey.layout = function(iterations) {
+    computeNodeLinks();
+    computeNodeValues();
+    computeNodeBreadths();
+    computeNodeDepths(iterations);
+    return sankey;
+  };
+
+  sankey.relayout = function() {
+    computeLinkDepths();
+    return sankey;
+  };
 
   return sankey;
 };
