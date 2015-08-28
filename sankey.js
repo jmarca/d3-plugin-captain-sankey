@@ -134,21 +134,26 @@ d3.sankey = function() {
         nextNodes,
         x = 0;
 
-    // Work from left to right.
-    // Keep updating the breath (x-position) of nodes that are target of recently updated nodes.
-    while (remainingNodes.length && x < nodes.length) {
-      nextNodes = [];
-      remainingNodes.forEach(function(node) {
+    function updateNode(node) {
+        // Set x-position and width:
         node.x = x;
         node.dx = nodeWidth;
         node.sourceLinks.forEach(function(link) {
-          if (nextNodes.indexOf(link.target) < 0) {
+          // Only add it to the nextNodes list if it is not already present:
+          if (nextNodes.indexOf(link.target) === -1) {
             nextNodes.push(link.target);
           }
         });
-      });
+    }
+
+    // Work from left to right.
+    // Keep updating the breadth (x-position) of nodes that are targets of
+    // recently-updated nodes.
+    while (remainingNodes.length && x < nodes.length) {
+      nextNodes = [];
+      remainingNodes.forEach(updateNode);
       remainingNodes = nextNodes;
-      ++x;
+      x += 1;
     }
 
     // Optionally move pure sinks always to the right.
@@ -161,8 +166,9 @@ d3.sankey = function() {
 
   // Compute the depth (y-position) for each node.
   function computeNodeDepths(iterations) {
-    // Group nodes by breath.
-    var nodesByBreadth = d3.nest()
+    var alpha = 1,
+        // Group nodes by breadth:
+        nodesByBreadth = d3.nest()
         .key(function(d) { return d.x; })
         .sortKeys(d3.ascending)
         .entries(nodes)
@@ -198,7 +204,7 @@ d3.sankey = function() {
 
         // Push any overlapping nodes down.
         nodes.sort(ascendingDepth);
-        for (i = 0; i < n; ++i) {
+        for (i = 0; i < n; i += 1) {
           node = nodes[i];
           dy = y0 - node.y;
           if (dy > 0) { node.y += dy; }
@@ -211,7 +217,7 @@ d3.sankey = function() {
           y0 = node.y -= dy;
 
           // Push any overlapping nodes back up.
-          for (i = n - 2; i >= 0; --i) {
+          for (i = n - 2; i >= 0; i -= 1) {
             node = nodes[i];
             dy = node.y + node.dy + nodePadding - y0;
             if (dy > 0) { node.y -= dy; }
@@ -226,7 +232,7 @@ d3.sankey = function() {
         return (link.source.y + link.sy + link.dy / 2) * link.value;
       }
 
-      nodesByBreadth.forEach(function(nodes, breadth) {
+      nodesByBreadth.forEach(function(nodes) {
         nodes.forEach(function(node) {
           if (node.targetLinks.length) {
             // Value-weighted average of the y-position of source node centers linked to this node.
@@ -258,8 +264,12 @@ d3.sankey = function() {
     resolveCollisions();
     computeLinkDepths();
 
-    for (var alpha = 1; iterations > 0; --iterations) {
-      relaxRightToLeft(alpha *= 0.99);
+    while (iterations > 0) {
+      iterations -= 1;
+
+      // Make each round of moves progressively weaker:
+      alpha *= 0.99;
+      relaxRightToLeft(alpha);
       resolveCollisions();
       computeLinkDepths();
 
