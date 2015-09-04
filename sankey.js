@@ -60,26 +60,27 @@ d3.sankey = function() {
   // center: Y-position of the middle of a node.
   function center(node) { return node.y + node.dy / 2; }
 
-  // Populate the sourceLinks and targetLinks for each node.
+  // computeNodeLinks: Populate the sourceLinks and targetLinks for each node.
   // Also, if the source and target are not objects, assume they are indices.
   function computeNodeLinks() {
     nodes.forEach(function(node) {
-      // Links that have this node as source.
-      node.sourceLinks = [];
-      // Links that have this node as target.
-      node.targetLinks = [];
+      node.sourceLinks = [];  // Links that have this node as source.
+      node.targetLinks = [];  // Links that have this node as target.
     });
+
     links.forEach(function(link) {
-      var source = link.source,
-          target = link.target;
-      if (typeof source === "number") { source = link.source = nodes[link.source]; }
-      if (typeof target === "number") { target = link.target = nodes[link.target]; }
-      source.sourceLinks.push(link);
-      target.targetLinks.push(link);
+      // Are either of the values just an index? Then convert to nodes:
+      if (typeof link.source === "number") { link.source = nodes[link.source]; }
+      if (typeof link.target === "number") { link.target = nodes[link.target]; }
+
+      // Add this link to the affected source & target:
+      link.source.sourceLinks.push(link);
+      link.target.targetLinks.push(link);
     });
   }
 
-  // Compute the value (size) of each node by summing the associated links.
+  // computeNodeValues: Compute the value (size) of each node by summing the
+  // associated links.
   function computeNodeValues() {
     // Each node will equal the greater of the flows coming in or out:
     nodes.forEach(function(node) {
@@ -104,13 +105,11 @@ d3.sankey = function() {
   }
 
   function scaleNodeBreadths(kx) {
-    nodes.forEach(function(node) {
-      node.x *= kx;
-    });
+    nodes.forEach(function(node) { node.x *= kx; });
   }
 
-  // Compute y-offset of the source endpoint (sy) and target endpoints (ty) of links,
-  // relative to the source/target node's y-position.
+  // computeLinkDepths: Compute the y-offset of the source endpoint (sy) and
+  // target endpoints (ty) of links, relative to the source/target node's y-position.
   function computeLinkDepths() {
     function ascendingSourceDepth(a, b) { return a.source.y - b.source.y; }
     function ascendingTargetDepth(a, b) { return a.target.y - b.target.y; }
@@ -132,7 +131,7 @@ d3.sankey = function() {
     });
   }
 
-  // Iteratively assign the breadth (x-position) for each node.
+  // computeNodeBreadths: Iteratively assign the breadth (x-position) for each node.
   // Nodes are assigned the maximum breadth of incoming neighbors plus one;
   // nodes with no incoming links are assigned breadth zero, while
   // nodes with no outgoing links are assigned the maximum breadth.
@@ -168,10 +167,11 @@ d3.sankey = function() {
       moveSinksRight(x);
     }
 
-    scaleNodeBreadths((size[0] - nodeWidth) / (x - 1));
+    // Apply a scaling factor to the breadths to spread them evenly across the canvas:
+    scaleNodeBreadths( (size[0] - nodeWidth) / (x - 1) );
   }
 
-  // Compute the depth (y-position) for each node.
+  // computeNodeDepths: Compute the depth (y-position) for each node.
   function computeNodeDepths(iterations) {
     var alpha = 1,
         // Group nodes by breadth:
@@ -201,34 +201,35 @@ d3.sankey = function() {
 
     function resolveCollisions() {
       nodesByBreadth.forEach(function(nodes) {
-        var node,
-            dy,
-            y0 = 0,
-            n = nodes.length,
+        var current_node,
+            y_distance,
+            current_y = 0,
+            nodes_in_group = nodes.length,
             i;
 
         function ascendingDepth(a, b) { return a.y - b.y; }
 
         // Push any overlapping nodes down.
         nodes.sort(ascendingDepth);
-        for (i = 0; i < n; i += 1) {
-          node = nodes[i];
-          dy = y0 - node.y;
-          if (dy > 0) { node.y += dy; }
-          y0 = node.y + node.dy + nodePadding;
+        for (i = 0; i < nodes_in_group; i += 1) {
+          current_node = nodes[i];
+          y_distance = current_y - current_node.y;
+          if (y_distance > 0) { current_node.y += y_distance; }
+          current_y = current_node.y + current_node.dy + nodePadding;
         }
 
-        // If the bottommost node goes outside the bounds, push it back up.
-        dy = y0 - nodePadding - size[1];
-        if (dy > 0) {
-          y0 = node.y -= dy;
+        // If the last/bottom-most node goes outside the bounds, push it back up.
+        y_distance = current_y - nodePadding - size[1];
+        if (y_distance > 0) {
+          current_node.y -= y_distance;
+          current_y = current_node.y;
 
-          // Push any overlapping nodes back up.
-          for (i = n - 2; i >= 0; i -= 1) {
-            node = nodes[i];
-            dy = node.y + node.dy + nodePadding - y0;
-            if (dy > 0) { node.y -= dy; }
-            y0 = node.y;
+          // From there, push any now-overlapping nodes back up.
+          for (i = nodes_in_group - 2; i >= 0; i -= 1) {
+            current_node = nodes[i];
+            y_distance = current_node.y + current_node.dy + nodePadding - current_y;
+            if (y_distance > 0) { current_node.y -= y_distance; }
+            current_y = current_node.y;
           }
         }
       });
@@ -289,8 +290,9 @@ d3.sankey = function() {
   // SVG path data generator, to be used as "d" attribute on "path" element selection.
   sankey.link = function() {
     function link(d) {
-      var x0 = d.source.x + d.source.dx,
-          x1 = d.target.x,
+      var x0 = d.source.x + d.source.dx, // x-end of prior-node
+          x1 = d.target.x,               // x-beginning of next-node
+          // construct a function for interpolating between the above two values:
           xi = d3.interpolateNumber(x0, x1),
           // pick two points given the curvature and its converse:
           x2 = xi(curvature),
@@ -314,6 +316,7 @@ d3.sankey = function() {
     return sankey;
   };
 
+  // Given a new set of node positions, calculate where the flows must now be:
   sankey.relayout = function() {
     computeLinkDepths();
     return sankey;
