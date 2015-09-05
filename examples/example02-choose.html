@@ -76,6 +76,10 @@
                 data.hasOwnProperty('leftJustifyOrigins')
                     ? data.leftJustifyOrigins
                     : true)
+            .curvature(
+                data.hasOwnProperty('curvature')
+                    ? data.curvature
+                    : 0.5)
             .layout(32);
 
     // Draw the links.
@@ -146,6 +150,7 @@
   // Data set selector.
   var dataSets = [
     'data/data01-simple.js',
+    'data/data01a-simple-flat.js',
     'data/data02-big.js',
     'data/data02a-big-endpoints-justified.js',
     'data/data03-simple.js',
