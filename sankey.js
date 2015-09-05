@@ -6,7 +6,8 @@ d3.sankey = function() {
       size = [1, 1],
       nodes = [],
       links = [],
-      sinksRight = true,
+      rightJustifyEndpoints = true,
+      leftJustifyOrigins = true,
       curvature = 0.5;
 
   // Accessor-land:
@@ -46,11 +47,17 @@ d3.sankey = function() {
     return sankey;
   };
 
- sankey.sinksRight = function (x) {
-    if (x === undefined) { return sinksRight; }
-    sinksRight = x;
+ sankey.rightJustifyEndpoints = function (x) {
+    if (x === undefined) { return rightJustifyEndpoints; }
+    rightJustifyEndpoints = x;
     return sankey;
- };
+  };
+
+  sankey.leftJustifyOrigins = function (x) {
+    if (x === undefined) { return leftJustifyOrigins; }
+    leftJustifyOrigins = x;
+    return sankey;
+  };
 
   // valueSum: Add up all the 'value' keys from a list of objects (happens a lot):
   function valueSum(nodelist) {
@@ -88,18 +95,22 @@ d3.sankey = function() {
     });
   }
 
-  function moveSourcesRight() {
+  function moveOriginsRight() {
     nodes.forEach(function(node) {
+      // If this node is not the target for any others, then it's an origin
       if (!node.targetLinks.length) {
+        // Now move it as far right as it can go:
         node.x = d3.min(node.sourceLinks, function(d) { return d.target.x; }) - 1;
       }
     });
   }
 
-  function moveSinksRight(x) {
+  function moveSinksRight(last_x_position) {
     nodes.forEach(function(node) {
+      // If this node is not the source for any others, then it's a dead-end
       if (!node.sourceLinks.length) {
-        node.x = x - 1;
+        // Now move it all the way to the right of the diagram:
+        node.x = last_x_position;
       }
     });
   }
@@ -162,9 +173,15 @@ d3.sankey = function() {
       x += 1;
     }
 
-    // Optionally move pure sinks always to the right.
-    if (sinksRight) {
-      moveSinksRight(x);
+    // Move endpoint nodes all the way to the right?
+    if (rightJustifyEndpoints) {
+      moveSinksRight(x - 1);
+    }
+
+    // Let origins appear just before their first target node?
+    // (In this case, we have to do extra work to *not* justify these nodes.)
+    if (!leftJustifyOrigins) {
+      moveOriginsRight();
     }
 
     // Apply a scaling factor to the breadths to spread them evenly across the canvas:
@@ -243,9 +260,11 @@ d3.sankey = function() {
       nodesByBreadth.forEach(function(nodes) {
         nodes.forEach(function(node) {
           if (node.targetLinks.length) {
-            // Value-weighted average of the y-position of source node centers linked to this node.
-            var y = d3.sum(node.targetLinks, weightedSource) / valueSum(node.targetLinks);
-            node.y += (y - center(node)) * alpha;
+            // Value-weighted average of the y-position of source node centers
+            // linked to this node:
+            var y_position = d3.sum(node.targetLinks, weightedSource)
+                / valueSum(node.targetLinks);
+            node.y += (y_position - center(node)) * alpha;
           }
         });
       });
@@ -259,9 +278,11 @@ d3.sankey = function() {
       nodesByBreadth.slice().reverse().forEach(function(nodes) {
         nodes.forEach(function(node) {
           if (node.sourceLinks.length) {
-            // Value-weighted average of the y-positions of target nodes linked to this node.
-            var y = d3.sum(node.sourceLinks, weightedTarget) / valueSum(node.sourceLinks);
-            node.y += (y - center(node)) * alpha;
+            // Value-weighted average of the y-positions of target node centers
+            // linked to this node:
+            var y_position = d3.sum(node.sourceLinks, weightedTarget)
+                / valueSum(node.sourceLinks);
+            node.y += (y_position - center(node)) * alpha;
           }
         });
       });

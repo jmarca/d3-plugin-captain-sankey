@@ -68,7 +68,14 @@
 
     sankey.nodes(data.nodes)
             .links(data.links)
-            .sinksRight('sinksRight' in data ? data.sinksRight : true)
+            .rightJustifyEndpoints(
+                data.hasOwnProperty('rightJustifyEndpoints')
+                    ? data.rightJustifyEndpoints
+                    : true)
+            .leftJustifyOrigins(
+                data.hasOwnProperty('leftJustifyOrigins')
+                    ? data.leftJustifyOrigins
+                    : true)
             .layout(32);
 
     // Draw the links.
@@ -140,9 +147,12 @@
   var dataSets = [
     'data/data01-simple.js',
     'data/data02-big.js',
+    'data/data02a-big-endpoints-justified.js',
     'data/data03-simple.js',
     'data/data04-energy.js',
+    'data/data04a-energy-origins-unjustified.js',
     'data/data05-elephant.js',
+    'data/data05a-elephant-endpoints-justified.js',
     'data/data06-with-cycle.js'
   ];
 
@@ -174,7 +184,7 @@
             return d;
           })
           .attr('selected', function (d) {
-            return d == initialDataSet ? 'selected' : undefined
+            return d == initialDataSet ? 'selected' : undefined;
           })
           .text(function (d) {
             return d;

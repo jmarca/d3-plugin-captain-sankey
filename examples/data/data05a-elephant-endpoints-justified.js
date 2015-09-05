@@ -33,6 +33,6 @@ sankeyDraw(
       {"source": 13, "target": 14, "value": 26},
       {"source": 12, "target": 15, "value": 447}
     ],
-    'rightJustifyEndpoints': false
+    'rightJustifyEndpoints': true
   }
 );
