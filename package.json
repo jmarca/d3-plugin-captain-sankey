@@ -1,0 +1,26 @@
+{
+  "name": "d3-plugin-captain-sankey",
+  "version": "1.0.0",
+  "description": "D3 sankey plugin, captain variant",
+  "main": "sankey.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jmarca/d3-plugin-captain-sankey.git"
+  },
+  "keywords": [
+    "D3",
+    "Sankey"
+  ],
+  "author": "",
+  "license": "SEE LICENSE IN LICENSE",
+  "bugs": {
+    "url": "https://github.com/jmarca/d3-plugin-captain-sankey/issues"
+  },
+  "homepage": "https://github.com/jmarca/d3-plugin-captain-sankey#readme"
+}
